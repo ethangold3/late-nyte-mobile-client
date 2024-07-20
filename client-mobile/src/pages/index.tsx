@@ -1,54 +1,54 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
+import { joinGame } from '../services/api';
 
 const HomePage = () => {
   const [gameId, setGameId] = useState('');
-  const [playerName, setPlayerName] = useState('');
+  const [username, setUsername] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleCreateGame = async () => {
-    // TODO: Implement API call to create a game
-    const newGameId = 'ABCD'; // This should come from your API
-    router.push(`/game/${newGameId}`);
-  };
+  const handleJoinGame = async () => {
+    if (!gameId || !username) {
+      setError('Please enter both Game ID and Username');
+      return;
+    }
 
-  const handleJoinGame = () => {
-    if (gameId && playerName) {
-      router.push(`/game/${gameId}?name=${playerName}`);
+    try {
+      const response = await joinGame(gameId, username);
+      if (response.message === 'Joined game successfully') {
+        router.push(`/game/${gameId}?username=${username}`);
+      }
+    } catch (err) {
+      setError('Failed to join game. Please check the Game ID and try again.');
+      console.error('Error joining game:', err);
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-4xl font-bold mb-8">Welcome to Late Nyte</h1>
+      <h1 className="text-4xl font-bold mb-8">Late Nyte Mobile</h1>
+      <input
+        type="text"
+        value={gameId}
+        onChange={(e) => setGameId(e.target.value)}
+        placeholder="Enter Game ID"
+        className="mb-4 p-2 border rounded"
+      />
+      <input
+        type="text"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Enter Your Name"
+        className="mb-4 p-2 border rounded"
+      />
       <button
-        onClick={handleCreateGame}
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
+        onClick={handleJoinGame}
+        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
       >
-        Create Game
+        Join Game
       </button>
-      <div className="flex flex-col items-center">
-        <input
-          type="text"
-          value={gameId}
-          onChange={(e) => setGameId(e.target.value)}
-          placeholder="Enter Game ID"
-          className="mb-2 p-2 border rounded"
-        />
-        <input
-          type="text"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          placeholder="Enter Your Name"
-          className="mb-2 p-2 border rounded"
-        />
-        <button
-          onClick={handleJoinGame}
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-        >
-          Join Game
-        </button>
-      </div>
+      {error && <p className="text-red-500 mt-4">{error}</p>}
     </div>
   );
 };
