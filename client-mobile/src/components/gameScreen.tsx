@@ -1,24 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { webSocketService } from '../../services/websockets';
-import PunchlineInput from '../../components/PunchlineInput';
-import MobileVoting from '../../components/MobileVoting';
-import MobileScoreboard from '../../components/MobileScoreboard';
+import React, { useState, useEffect } from 'react';
+import { useSocket } from '../hooks/useSocket';
+import PunchlineInput from './PunchlineInput';
+import MobileVoting from './MobileVoting';
+import MobileScoreboard from './MobileScoreboard';
 
-const Game: React.FC = () => {
+const MobileGameScreen = ({ gameId, username }) => {
   const [gameState, setGameState] = useState('waiting');
-  const [currentPrompt, setCurrentPrompt] = useState<any>(null);
+  const [currentPrompt, setCurrentPrompt] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
-  const router = useRouter();
-  const { id: gameId, username } = router.query;
-  const [socket, setSocket] = useState<any>(null);
+  const socket = useSocket(gameId);
 
   useEffect(() => {
-    if (gameId) {
-      const newSocket = webSocketService.connect(gameId as string);
-      setSocket(newSocket);
-
-      newSocket.on('gameUpdate', (game) => {
+    if (socket) {
+      socket.on('gameUpdate', (game) => {
         setGameState(game.status);
         if (game.status === 'in-progress') {
           const currentRound = game.rounds[game.currentRound - 1];
@@ -32,25 +26,27 @@ const Game: React.FC = () => {
         }
       });
 
-      newSocket.on('votingStart', ({ prompt }) => {
+      socket.on('votingStart', ({ prompt }) => {
         setCurrentPrompt(prompt);
         setTimeLeft(30);
         setGameState('voting');
       });
 
-      newSocket.on('roundEnd', () => {
+      socket.on('roundEnd', () => {
         setGameState('scoreboard');
       });
 
-      newSocket.on('gameOver', () => {
+      socket.on('gameOver', () => {
         setGameState('gameOver');
       });
-
-      return () => {
-        webSocketService.disconnect();
-      };
     }
-  }, [gameId, username]);
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [socket, username]);
 
   const renderContent = () => {
     switch (gameState) {
@@ -62,7 +58,7 @@ const Game: React.FC = () => {
             prompt={currentPrompt}
             timeLeft={timeLeft}
             onSubmit={(punchline) => {
-              socket?.emit('submitPunchline', { gameId, username, promptId: currentPrompt._id, punchline });
+              socket.emit('submitPunchline', { gameId, username, promptId: currentPrompt._id, punchline });
             }}
           />
         ) : (
@@ -72,7 +68,7 @@ const Game: React.FC = () => {
         return <MobileVoting prompt={currentPrompt} timeLeft={timeLeft} socket={socket} />;
       case 'scoreboard':
       case 'gameOver':
-        return <MobileScoreboard gameId={gameId as string} isGameOver={gameState === 'gameOver'} />;
+        return <MobileScoreboard gameId={gameId} isGameOver={gameState === 'gameOver'} />;
       default:
         return null;
     }
@@ -86,4 +82,4 @@ const Game: React.FC = () => {
   );
 };
 
-export default Game;
+export default MobileGameScreen;

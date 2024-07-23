@@ -1,27 +1,23 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
-import { joinGame } from '../services/api';
+import axios from 'axios';
 
-const HomePage = () => {
+const Home: React.FC = () => {
   const [gameId, setGameId] = useState('');
   const [username, setUsername] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const router = useRouter();
 
-  const handleJoinGame = async () => {
+  const joinGame = async () => {
     if (!gameId || !username) {
       setError('Please enter both Game ID and Username');
       return;
     }
-
     try {
-      const response = await joinGame(gameId, username);
-      if (response.message === 'Joined game successfully') {
-        router.push(`/game/${gameId}?username=${username}`);
-      }
+      await axios.post(`http://localhost:3000/api/game/join`, { gameId, username });
+      router.push(`/game/${gameId}?username=${username}`);
     } catch (err) {
       setError('Failed to join game. Please check the Game ID and try again.');
-      console.error('Error joining game:', err);
     }
   };
 
@@ -43,7 +39,7 @@ const HomePage = () => {
         className="mb-4 p-2 border rounded"
       />
       <button
-        onClick={handleJoinGame}
+        onClick={joinGame}
         className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
       >
         Join Game
@@ -53,4 +49,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage;
+export default Home;
